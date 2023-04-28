@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,9 +19,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Launch
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -48,6 +53,28 @@ import java.time.format.DateTimeFormatter
 class MainActivity : ComponentActivity() {
     private val dataFormatter = DateTimeFormatter.ofPattern("MM-dd")
     private val aDayDao by lazy { (application as Application).db.aDayDao() }
+    private val exportCsvResponse =
+        registerForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+            uri ?: return@registerForActivityResult
+            val outputStream =
+                contentResolver.openOutputStream(uri) ?: return@registerForActivityResult
+            runIO {
+                val sb = StringBuilder()
+                sb.append("日期,吃药时间1,吃药时间2,吃药时间3,吃药时间4\n")
+                aDayDao.getAll().forEach { day ->
+                    val date =
+                        LocalDate.of(day.data / 10000, day.data % 10000 / 100, day.data % 100)
+                    val do0 = day.do0?.let { LocalTime.of(it / 100, it % 100) }
+                    val do1 = day.do1?.let { LocalTime.of(it / 100, it % 100) }
+                    val do2 = day.do2?.let { LocalTime.of(it / 100, it % 100) }
+                    val do3 = day.do3?.let { LocalTime.of(it / 100, it % 100) }
+                    sb.append("$date,$do0,$do1,$do2,$do3\n")
+                }
+                outputStream.writer().use {
+                    it.write(sb.toString())
+                }
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,7 +83,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             var onDoToMuchDialog by remember { mutableStateOf(false) }
             DoProgynovaTheme {
-                // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -86,6 +112,12 @@ class MainActivity : ComponentActivity() {
                                     aDayDao.upsert(aDay)
                             }
                         }
+                        IconButton(
+                            onClick = { exportCsvResponse.launch("${LocalDate.now()}.csv") },
+                            modifier = Modifier.align(Alignment.BottomEnd)
+                        ) {
+                            Icon(imageVector = Icons.Default.Launch, contentDescription = "export")
+                        }
                     }
                     if (onDoToMuchDialog)
                         OnDoToMuchDialog {
@@ -106,7 +138,7 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun DataCard(modifier: Modifier) {
         Box(modifier = modifier) {
-            val days = aDayDao.getAll().collectAsState(initial = listOf())
+            val days = aDayDao.getAllFlow().collectAsState(initial = listOf())
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -137,7 +169,10 @@ class MainActivity : ComponentActivity() {
                 onClick = onDo,
                 modifier = Modifier.size(180.dp, 100.dp)
             ) {
-                Text(text = stringResource(id = R.string.ado), style = MaterialTheme.typography.displayMedium)
+                Text(
+                    text = stringResource(id = R.string.ado),
+                    style = MaterialTheme.typography.displayMedium
+                )
             }
         }
     }
