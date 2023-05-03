@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Launch
+import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -82,6 +83,7 @@ class MainActivity : ComponentActivity() {
             WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
         setContent {
             var onDoToMuchDialog by remember { mutableStateOf(false) }
+            var onUndoDialog by remember { mutableStateOf(false) }
             DoProgynovaTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -118,11 +120,24 @@ class MainActivity : ComponentActivity() {
                         ) {
                             Icon(imageVector = Icons.Default.Launch, contentDescription = "export")
                         }
+                        IconButton(
+                            onClick = { onUndoDialog = true },
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(bottom = 40.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.Undo, contentDescription = "undo")
+                        }
                     }
                     if (onDoToMuchDialog)
                         OnDoToMuchDialog {
                             onDoToMuchDialog = false
                         }
+                    if (onUndoDialog) {
+                        OnUndoDialog {
+                            onUndoDialog = false
+                        }
+                    }
                 }
             }
         }
@@ -190,6 +205,37 @@ class MainActivity : ComponentActivity() {
             },
             title = { Text("吃太多了吧") },
         )
+    }
+
+    @Composable
+    fun OnUndoDialog(onDismissRequest: () -> Unit) {
+        AlertDialog(
+            onDismissRequest = onDismissRequest,
+            confirmButton = {
+                TextButton(onClick = {
+                    onDismissRequest()
+                    runIO {
+                        val data = LocalDate.now()
+                            .let { it.year * 10000 + it.monthValue * 100 + it.dayOfMonth }
+                        var aDay = aDayDao.getByData(data) ?: ADay(data)
+                        when {
+                            aDay.do3 != null -> aDay = aDay.copy(do3 = null)
+                            aDay.do2 != null -> aDay = aDay.copy(do2 = null)
+                            aDay.do1 != null -> aDay = aDay.copy(do1 = null)
+                            aDay.do0 != null -> aDay = aDay.copy(do0 = null)
+                        }
+                        aDayDao.upsert(aDay)
+                    }
+                }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissRequest) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            },
+            title = { Text("undo?") })
     }
 
     @Composable
