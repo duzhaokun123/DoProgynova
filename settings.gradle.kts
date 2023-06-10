@@ -13,6 +13,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "do Progynova"
+rootProject.name = "DoProgynova"
 include(":app")
  

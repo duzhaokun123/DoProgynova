@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.duzhaokun123.doprogynova.room.ADay
 import io.github.duzhaokun123.doprogynova.ui.theme.DoProgynovaTheme
+import io.github.duzhaokun123.doprogynova.utils.doOnce
 import io.github.duzhaokun123.doprogynova.utils.isToday
 import io.github.duzhaokun123.doprogynova.utils.runIO
 import java.time.LocalDate
@@ -98,21 +99,7 @@ class MainActivity : ComponentActivity() {
                                 .align(Alignment.BottomCenter)
                                 .padding(bottom = 20.dp)
                         ) {
-                            runIO {
-                                val data = LocalDate.now()
-                                    .let { it.year * 10000 + it.monthValue * 100 + it.dayOfMonth }
-                                val time = LocalTime.now().let { it.hour * 100 + it.minute }
-                                var aDay = aDayDao.getByData(data) ?: ADay(data)
-                                when {
-                                    aDay.do0 == null -> aDay = aDay.copy(do0 = time)
-                                    aDay.do1 == null -> aDay = aDay.copy(do1 = time)
-                                    aDay.do2 == null -> aDay = aDay.copy(do2 = time)
-                                    aDay.do3 == null -> aDay = aDay.copy(do3 = time)
-                                    else -> onDoToMuchDialog = true
-                                }
-                                if (onDoToMuchDialog.not())
-                                    aDayDao.upsert(aDay)
-                            }
+                            doOnce(aDayDao) { onDoToMuchDialog = true }
                         }
                         IconButton(
                             onClick = { exportCsvResponse.launch("${LocalDate.now()}.csv") },
