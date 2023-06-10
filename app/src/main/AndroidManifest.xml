@@ -24,7 +24,7 @@
         <service
             android:name=".QSTileServer"
             android:exported="true"
-            android:icon="@drawable/id_debian"
+            android:icon="@drawable/ic_debian"
             android:label="@string/app_name"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
